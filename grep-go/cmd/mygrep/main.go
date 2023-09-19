@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
-	"unicode/utf8"
+	"regexp"
 )
 
 // Usage: echo <input_text> | your_grep.sh -E <pattern>
@@ -35,10 +34,9 @@ func main() {
 }
 
 func matchLine(line []byte, pattern string) (bool, error) {
-	if utf8.RuneCountInString(pattern) != 1 {
-		return false, fmt.Errorf("unsupported pattern: %q", pattern)
+	ok, err := regexp.Match(pattern, line)
+	if err != nil {
+		return false, err
 	}
-
-	ok := bytes.ContainsAny(line, pattern)
 	return ok, nil
 }

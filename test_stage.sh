@@ -4,6 +4,9 @@ case $1 in
   '1') 
     CODECRAFTERS_CURRENT_STAGE_SLUG='init'
     ;;
+  '2') 
+    CODECRAFTERS_CURRENT_STAGE_SLUG='match_digit'
+    ;;
   *)
     echo 'Invalid stage'
     exit
