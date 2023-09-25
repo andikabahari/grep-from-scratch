@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 )
 
 // Usage: echo <input_text> | your_grep.sh -E <pattern>
@@ -34,9 +34,16 @@ func main() {
 }
 
 func matchLine(line []byte, pattern string) (bool, error) {
-	ok, err := regexp.Match(pattern, line)
-	if err != nil {
-		return false, err
+	var ok bool
+	if pattern == "\\d" {
+		for _, c := range line {
+			if '0' <= c && c <= '9' {
+				ok = true
+				break
+			}
+		}
+	} else {
+		ok = bytes.ContainsAny(line, pattern)
 	}
 	return ok, nil
 }
