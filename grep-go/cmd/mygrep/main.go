@@ -35,15 +35,38 @@ func main() {
 
 func matchLine(line []byte, pattern string) (bool, error) {
 	var ok bool
-	if pattern == "\\d" {
-		for _, c := range line {
-			if '0' <= c && c <= '9' {
-				ok = true
-				break
-			}
-		}
-	} else {
+
+	switch pattern {
+	case "\\d":
+		ok = isNumeric(line)
+
+	case "\\w":
+		ok = isAlphanumeric(line)
+
+	default:
 		ok = bytes.ContainsAny(line, pattern)
 	}
+
 	return ok, nil
+}
+
+func isNumeric(line []byte) bool {
+	for _, c := range line {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func isAlphanumeric(line []byte) bool {
+	for _, c := range line {
+		if !(c == '_' ||
+			'0' <= c && c <= '9' ||
+			'A' <= c && c <= 'Z' ||
+			'a' <= c && c <= 'z') {
+			return false
+		}
+	}
+	return true
 }
