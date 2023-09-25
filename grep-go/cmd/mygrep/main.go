@@ -48,8 +48,7 @@ func matchLine(line []byte, pattern string) (bool, error) {
 		} else if pattern[p] == '[' {
 			k := strings.IndexByte(pattern[p:], ']')
 			if k > -1 {
-				k += 1
-				ok = matchGroup(line[l], pattern[p:k])
+				ok = matchGroup(line[l], pattern[p:k+1])
 				p = k
 			}
 		} else {
@@ -61,7 +60,7 @@ func matchLine(line []byte, pattern string) (bool, error) {
 			p = 0
 		}
 	}
-	return p >= len(pattern), nil
+	return p == len(pattern), nil
 }
 
 func isNumeric(c byte) bool {
