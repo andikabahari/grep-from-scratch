@@ -34,20 +34,19 @@ func main() {
 }
 
 func matchLine(line []byte, pattern string) (bool, error) {
-	var ok bool
-
-	switch pattern {
-	case "\\d":
-		ok = isNumeric(line)
-
-	case "\\w":
-		ok = isAlphanumeric(line)
-
-	default:
-		ok = bytes.ContainsAny(line, pattern)
+	if pattern == "\\d" {
+		return isNumeric(line), nil
 	}
 
-	return ok, nil
+	if pattern == "\\w" {
+		return isAlphanumeric(line), nil
+	}
+
+	if isPositiveCharacterGroup(pattern) {
+		return bytes.ContainsAny(line, pattern[1:len(pattern)-1]), nil
+	}
+
+	return bytes.ContainsAny(line, pattern), nil
 }
 
 func isNumeric(line []byte) bool {
@@ -69,4 +68,12 @@ func isAlphanumeric(line []byte) bool {
 		}
 	}
 	return true
+}
+
+func isPositiveCharacterGroup(pattern string) bool {
+	return isCharacterGroup(pattern) && pattern[1] != '^'
+}
+
+func isCharacterGroup(pattern string) bool {
+	return pattern[0] == '[' && pattern[len(pattern)-1] == ']' && len(pattern) > 2
 }
