@@ -43,7 +43,7 @@ func matchLine(line []byte, pattern string) (bool, error) {
 			case 'd':
 				ok = isNumeric(line[l])
 			case 'w':
-				ok = isAlphanumeric(line[l])
+				ok = line[l] == '_' || isAlpha(line[l]) || isNumeric(line[l])
 			}
 		} else if pattern[p] == '[' {
 			k := strings.IndexByte(pattern[p:], ']')
@@ -67,11 +67,8 @@ func isNumeric(c byte) bool {
 	return '0' <= c && c <= '9'
 }
 
-func isAlphanumeric(c byte) bool {
-	return c == '_' ||
-		'0' <= c && c <= '9' ||
-		'A' <= c && c <= 'Z' ||
-		'a' <= c && c <= 'z'
+func isAlpha(c byte) bool {
+	return 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z'
 }
 
 func matchGroup(c byte, pattern string) (ok bool) {
