@@ -46,6 +46,10 @@ func matchLine(line []byte, pattern string) (bool, error) {
 		return bytes.ContainsAny(line, pattern[1:len(pattern)-1]), nil
 	}
 
+	if isNegativeCharacterGroup(pattern) {
+		return !bytes.ContainsAny(line, pattern[2:len(pattern)-1]), nil
+	}
+
 	return bytes.ContainsAny(line, pattern), nil
 }
 
@@ -72,6 +76,10 @@ func isAlphanumeric(line []byte) bool {
 
 func isPositiveCharacterGroup(pattern string) bool {
 	return isCharacterGroup(pattern) && pattern[1] != '^'
+}
+
+func isNegativeCharacterGroup(pattern string) bool {
+	return isCharacterGroup(pattern) && pattern[1] == '^'
 }
 
 func isCharacterGroup(pattern string) bool {
