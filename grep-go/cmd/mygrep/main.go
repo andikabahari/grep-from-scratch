@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 // Usage: echo <input_text> | your_grep.sh -E <pattern>
@@ -34,54 +34,51 @@ func main() {
 }
 
 func matchLine(line []byte, pattern string) (bool, error) {
-	if pattern == "\\d" {
-		return isNumeric(line), nil
-	}
-
-	if pattern == "\\w" {
-		return isAlphanumeric(line), nil
-	}
-
-	if isPositiveCharacterGroup(pattern) {
-		return bytes.ContainsAny(line, pattern[1:len(pattern)-1]), nil
-	}
-
-	if isNegativeCharacterGroup(pattern) {
-		return !bytes.ContainsAny(line, pattern[2:len(pattern)-1]), nil
-	}
-
-	return bytes.ContainsAny(line, pattern), nil
-}
-
-func isNumeric(line []byte) bool {
-	for _, c := range line {
-		if c < '0' || c > '9' {
-			return false
+	l, p := 0, 0
+	for l < len(line) && p < len(pattern) {
+		var ok bool
+		if pattern[p] == '\\' {
+			p += 1
+			switch pattern[p] {
+			case 'd':
+				ok = isNumeric(line[l])
+			case 'w':
+				ok = isAlphanumeric(line[l])
+			}
+		} else if pattern[p] == '[' {
+			p += 1
+			k := strings.IndexByte(pattern[p:], ']') + 1
+			neg := pattern[p] == '^'
+			if neg {
+				p += 1
+			}
+			for ; p < k; p++ {
+				if line[l] == pattern[p] {
+					ok = true
+				}
+			}
+			if neg {
+				ok = !ok
+			}
+		} else if line[l] == pattern[p] {
+			ok = true
+		}
+		l += 1
+		p += 1
+		if !ok {
+			p = 0
 		}
 	}
-	return true
+	return p == len(pattern), nil
 }
 
-func isAlphanumeric(line []byte) bool {
-	for _, c := range line {
-		if !(c == '_' ||
-			'0' <= c && c <= '9' ||
-			'A' <= c && c <= 'Z' ||
-			'a' <= c && c <= 'z') {
-			return false
-		}
-	}
-	return true
+func isNumeric(c byte) bool {
+	return '0' <= c && c <= '9'
 }
 
-func isPositiveCharacterGroup(pattern string) bool {
-	return isCharacterGroup(pattern) && pattern[1] != '^'
-}
-
-func isNegativeCharacterGroup(pattern string) bool {
-	return isCharacterGroup(pattern) && pattern[1] == '^'
-}
-
-func isCharacterGroup(pattern string) bool {
-	return pattern[0] == '[' && pattern[len(pattern)-1] == ']' && len(pattern) > 2
+func isAlphanumeric(c byte) bool {
+	return c == '_' ||
+		'0' <= c && c <= '9' ||
+		'A' <= c && c <= 'Z' ||
+		'a' <= c && c <= 'z'
 }
