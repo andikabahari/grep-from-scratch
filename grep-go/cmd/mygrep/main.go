@@ -46,22 +46,14 @@ func matchLine(line []byte, pattern string) (bool, error) {
 				ok = isAlphanumeric(line[l])
 			}
 		} else if pattern[p] == '[' {
-			p += 1
-			k := strings.IndexByte(pattern[p:], ']') + 1
-			neg := pattern[p] == '^'
-			if neg {
-				p += 1
+			k := strings.IndexByte(pattern[p:], ']')
+			if k > -1 {
+				k += 1
+				ok = matchGroup(line[l], pattern[p:k])
+				p = k
 			}
-			for ; p < k; p++ {
-				if line[l] == pattern[p] {
-					ok = true
-				}
-			}
-			if neg {
-				ok = !ok
-			}
-		} else if line[l] == pattern[p] {
-			ok = true
+		} else {
+			ok = line[l] == pattern[p]
 		}
 		l += 1
 		p += 1
@@ -69,7 +61,7 @@ func matchLine(line []byte, pattern string) (bool, error) {
 			p = 0
 		}
 	}
-	return p == len(pattern), nil
+	return p >= len(pattern), nil
 }
 
 func isNumeric(c byte) bool {
@@ -81,4 +73,24 @@ func isAlphanumeric(c byte) bool {
 		'0' <= c && c <= '9' ||
 		'A' <= c && c <= 'Z' ||
 		'a' <= c && c <= 'z'
+}
+
+func matchGroup(c byte, pattern string) (ok bool) {
+	if !isGroup(pattern) {
+		return
+	}
+	for p := 0; p < len(pattern); p++ {
+		if c == pattern[p] {
+			ok = true
+			break
+		}
+	}
+	if pattern[1] == '^' {
+		return !ok
+	}
+	return
+}
+
+func isGroup(pattern string) bool {
+	return pattern[0] == '[' && pattern[len(pattern)-1] == ']' && len(pattern) > 2
 }
