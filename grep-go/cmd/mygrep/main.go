@@ -82,7 +82,6 @@ func matchLine(line []byte, pattern string) (bool, error) {
 					if !ok {
 						pattern = pattern[:p] + pattern[p+3:]
 						l = -1
-						p = -1
 					} else {
 						p++
 					}
