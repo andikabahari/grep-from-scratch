@@ -52,7 +52,7 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	for l < len(line) && p < len(pattern) {
 		var ok bool
 		if pattern[p] == '\\' {
-			p += 1
+			p++
 			switch pattern[p] {
 			case 'd':
 				ok = isNumeric(line[l])
@@ -67,13 +67,28 @@ func matchLine(line []byte, pattern string) (bool, error) {
 			}
 		} else {
 			ok = line[l] == pattern[p]
+			if p+1 < len(pattern) {
+				if pattern[p+1] == '+' {
+					p++
+					current := line[l]
+					l++
+					for ; l < len(line); l++ {
+						if line[l] != current {
+							break
+						}
+					}
+					l--
+				}
+			}
 		}
-		l += 1
-		p += 1
+
+		l++
+		p++
 		if !ok {
 			p = 0
 		}
 	}
+
 	return p == len(pattern), nil
 }
 
