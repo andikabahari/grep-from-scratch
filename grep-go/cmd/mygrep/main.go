@@ -34,6 +34,13 @@ func main() {
 }
 
 func matchLine(line []byte, pattern string) (bool, error) {
+	if pattern[0] == '^' {
+		if line[0] != pattern[1] {
+			return false, nil
+		}
+		pattern = pattern[1:]
+	}
+
 	l, p := 0, 0
 	for l < len(line) && p < len(pattern) {
 		var ok bool
