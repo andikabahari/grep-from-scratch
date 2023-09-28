@@ -66,18 +66,20 @@ func matchLine(line []byte, pattern string) (bool, error) {
 				p = k
 			}
 		} else {
-			ok = line[l] == pattern[p]
+			if pattern[p] == '.' {
+				ok = true
+			} else {
+				ok = line[l] == pattern[p]
+			}
 			if p+1 < len(pattern) {
 				if pattern[p+1] == '+' {
 					p++
 					current := line[l]
-					l++
-					for ; l < len(line); l++ {
-						if line[l] != current {
+					for ; l+1 < len(line); l++ {
+						if line[l+1] != current {
 							break
 						}
 					}
-					l--
 				} else if pattern[p+1] == '?' {
 					if !ok {
 						pattern = pattern[:p] + pattern[p+3:]
