@@ -65,6 +65,28 @@ func matchLine(line []byte, pattern string) (bool, error) {
 				ok = matchGroup(line[l], pattern[p:k+1])
 				p = k
 			}
+		} else if pattern[p] == '(' {
+			k := strings.IndexByte(pattern, ')')
+			if k > -1 {
+				patterns := strings.Split(pattern[p+1:k], "|")
+				for _, elem := range patterns {
+					ll, sp := l, 0
+					for ll < len(line) && sp < len(elem) {
+						if line[ll] != elem[sp] {
+							break
+						}
+						ll++
+						sp++
+					}
+
+					if sp == len(elem) {
+						ok = true
+						p = k
+						l = ll
+						break
+					}
+				}
+			}
 		} else {
 			if pattern[p] == '.' {
 				ok = true

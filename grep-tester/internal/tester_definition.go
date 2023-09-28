@@ -1,8 +1,9 @@
 package internal
 
 import (
-	testerutils "github.com/codecrafters-io/tester-utils"
 	"time"
+
+	testerutils "github.com/codecrafters-io/tester-utils"
 )
 
 var testerDefinition = testerutils.TesterDefinition{
