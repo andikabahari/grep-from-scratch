@@ -34,105 +34,99 @@ func main() {
 }
 
 func matchLine(line []byte, pattern string) (bool, error) {
-	if pattern[0] == '^' {
-		if line[0] != pattern[1] {
-			return false, nil
-		}
-		pattern = pattern[1:]
-	}
+	m := newMatcher(line, pattern)
+	return m.Match(), nil
+}
 
-	if pattern[len(pattern)-1] == '$' {
-		if line[len(line)-1] != pattern[len(pattern)-2] {
-			return false, nil
-		}
-		pattern = pattern[:len(pattern)-1]
-	}
+type matcher struct {
+	line          []byte
+	pattern       string
+	lineOffset    int
+	patternOffset int
+}
 
-	l, p := 0, 0
-	for l < len(line) && p < len(pattern) {
+func newMatcher(line []byte, pattern string) matcher {
+	return matcher{
+		line:    line,
+		pattern: pattern,
+	}
+}
+
+func (m *matcher) Match() bool {
+	m.startOfStringAnchor()
+	m.endOfStringAnchor()
+
+	for m.lineOffset < len(m.line) && m.patternOffset < len(m.pattern) {
 		var ok bool
-		if pattern[p] == '\\' {
-			p++
-			switch pattern[p] {
+		switch m.pattern[m.patternOffset] {
+		case '.':
+			ok = true
+		case '\\':
+			m.patternOffset++
+			switch m.pattern[m.patternOffset] {
 			case 'd':
-				ok = isNumeric(line[l])
+				ok = isNumeric(m.line[m.lineOffset])
 			case 'w':
-				ok = line[l] == '_' || isAlpha(line[l]) || isNumeric(line[l])
+				ok = m.line[m.lineOffset] == '_' || isAlpha(m.line[m.lineOffset]) || isNumeric(m.line[m.lineOffset])
 			}
-		} else if pattern[p] == '[' {
-			k := strings.IndexByte(pattern[p:], ']')
-			if k > -1 {
-				ok = matchGroup(line[l], pattern[p:k+1])
-				p = k
-			}
-		} else if pattern[p] == '(' {
-			k := strings.IndexByte(pattern, ')')
-			if k > -1 {
-				patterns := strings.Split(pattern[p+1:k], "|")
-				for _, elem := range patterns {
-					ll, sp := l, 0
-					for ll < len(line) && sp < len(elem) {
-						if line[ll] != elem[sp] {
-							break
-						}
-						ll++
-						sp++
-					}
-
-					if sp == len(elem) {
-						ok = true
-						p = k
-						l = ll
-						break
-					}
-				}
-			}
-		} else {
-			if pattern[p] == '.' {
-				ok = true
-			} else {
-				ok = line[l] == pattern[p]
-			}
-			if p+1 < len(pattern) {
-				if pattern[p+1] == '+' {
-					p++
-					current := line[l]
-					for ; l+1 < len(line); l++ {
-						if line[l+1] != current {
-							break
-						}
-					}
-				} else if pattern[p+1] == '?' {
-					if !ok {
-						pattern = pattern[:p] + pattern[p+3:]
-						l = -1
-					} else {
-						p++
-					}
+		case '[':
+			ok = m.group()
+		case '(':
+			ok = m.alternation()
+		default:
+			ok = m.line[m.lineOffset] == m.pattern[m.patternOffset]
+			if m.patternOffset+1 < len(m.pattern) {
+				switch m.pattern[m.patternOffset+1] {
+				case '+':
+					ok = m.oneOrMoreTimes()
+				case '?':
+					ok = m.zeroOrOneTimes()
 				}
 			}
 		}
 
-		l++
-		p++
+		m.lineOffset++
+		m.patternOffset++
 		if !ok {
-			p = 0
+			m.patternOffset = 0
 		}
 	}
 
-	return p == len(pattern), nil
+	return m.patternOffset == len(m.pattern)
 }
 
-func isNumeric(c byte) bool {
-	return '0' <= c && c <= '9'
+func (m *matcher) startOfStringAnchor() bool {
+	if m.pattern[0] == '^' {
+		if m.line[0] != m.pattern[1] {
+			return false
+		}
+		m.pattern = m.pattern[1:]
+	}
+	return true
 }
 
-func isAlpha(c byte) bool {
-	return 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z'
+func (m *matcher) endOfStringAnchor() bool {
+	if m.pattern[len(m.pattern)-1] == '$' {
+		if m.line[len(m.line)-1] != m.pattern[len(m.pattern)-2] {
+			return false
+		}
+		m.pattern = m.pattern[:len(m.pattern)-1]
+	}
+	return true
+}
+
+func (m *matcher) group() (ok bool) {
+	k := strings.IndexByte(m.pattern[m.patternOffset:], ']')
+	if k > -1 {
+		ok = matchGroup(m.line[m.lineOffset], m.pattern[m.patternOffset:k+1])
+		m.patternOffset = k
+	}
+	return
 }
 
 func matchGroup(c byte, pattern string) (ok bool) {
-	if !isGroup(pattern) {
+	isGroup := pattern[0] == '[' && pattern[len(pattern)-1] == ']' && len(pattern) > 2
+	if !isGroup {
 		return
 	}
 	for p := 0; p < len(pattern); p++ {
@@ -147,6 +141,57 @@ func matchGroup(c byte, pattern string) (ok bool) {
 	return
 }
 
-func isGroup(pattern string) bool {
-	return pattern[0] == '[' && pattern[len(pattern)-1] == ']' && len(pattern) > 2
+func (m *matcher) alternation() bool {
+	k := strings.IndexByte(m.pattern, ')')
+	if k > -1 {
+		patterns := strings.Split(m.pattern[m.patternOffset+1:k], "|")
+		for _, pattern := range patterns {
+			l, p := m.lineOffset, 0
+			for l < len(m.line) && p < len(pattern) {
+				if m.line[l] != pattern[p] {
+					break
+				}
+				l++
+				p++
+			}
+
+			if p == len(pattern) {
+				m.patternOffset = k
+				m.lineOffset = l
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (m *matcher) oneOrMoreTimes() bool {
+	ok := m.line[m.lineOffset] == m.pattern[m.patternOffset]
+	m.patternOffset++
+	current := m.line[m.lineOffset]
+	for ; m.lineOffset+1 < len(m.line); m.lineOffset++ {
+		if m.line[m.lineOffset+1] != current {
+			break
+		}
+	}
+	return ok
+}
+
+func (m *matcher) zeroOrOneTimes() bool {
+	ok := m.line[m.lineOffset] == m.pattern[m.patternOffset]
+	if !ok {
+		m.pattern = m.pattern[:m.patternOffset] + m.pattern[m.patternOffset+3:]
+		m.lineOffset = -1
+	} else {
+		m.patternOffset++
+	}
+	return ok
+}
+
+func isNumeric(c byte) bool {
+	return '0' <= c && c <= '9'
+}
+
+func isAlpha(c byte) bool {
+	return 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z'
 }
